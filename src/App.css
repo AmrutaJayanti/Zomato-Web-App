@@ -1,0 +1,10 @@
+/* styles/App.css */
+.app {
+    min-height: 100vh;
+    background-color: #f8f9fa;
+}
+
+.main-content {
+    min-height: calc(100vh - 70px);
+    padding-bottom: 2rem;
+}
