@@ -15,7 +15,7 @@ function App() {
 
         setLoading(true);
         try {
-            const response = await fetch(`https://zomato-web-app.onrender.com/restaurants/nearby?lat=${latitude}&lng=${longitude}&page=${page}&limit=10`,
+            const response = await fetch(`https://zomato-web-ap.onrender.com/restaurants/nearby?lat=${latitude}&lng=${longitude}&page=${page}&limit=10`,
                 {
                     headers: {
                         "Content-Type": "application/json; charset=utf-8",
