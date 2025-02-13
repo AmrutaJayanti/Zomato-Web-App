@@ -89,6 +89,8 @@ app.get("/restaurants/nearby", async (req, res) => {
     });
 });
 
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+
 
 async function classifyCuisine(imageBuffer) {
     try {
