@@ -13,7 +13,7 @@ const ImageSearch = () => {
         formData.append("image", file);
 
         try {
-            const response = await fetch("http://localhost:5000/restaurants/search/image", {
+            const response = await fetch("https://zomato-web-app.onrender.com/restaurants/search/image", {
                 method: "POST",
                 body: formData, 
             });
