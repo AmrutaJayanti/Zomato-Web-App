@@ -89,5 +89,39 @@ app.get("/restaurants/nearby", async (req, res) => {
     });
 });
 
+
+async function classifyCuisine(imageBuffer) {
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // Use updated model
+
+        const result = await model.generateContent([
+            { inlineData: { mimeType: "image/png", data: imageBuffer.toString("base64") } },
+            "Analyze the image and classify the cuisine. Return only the cuisine name (e.g., 'Italian', 'Chinese', 'Indian', 'Mexican')."
+        ]);
+
+        console.log("Gemini API Response:", JSON.stringify(result, null, 2)); // Debugging
+
+        const cuisine = result.response.candidates[0].content.parts[0].text.trim();
+        return cuisine;
+    } catch (err) {
+        console.error("Error processing image:", err);
+        return null;
+    }
+}
+
+app.post("/restaurants/search/image", async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: "No image uploaded" });
+        }
+
+        const cuisine = await classifyCuisine(req.file.buffer);
+        res.json({ cuisine });
+    } catch (error) {
+        console.error("Error processing image:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
 const PORT = process.env.PORT || 5003;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
