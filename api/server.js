@@ -3,7 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import multer from "multer";
 import supabase from "./config.js";
-
+import { GoogleGenerativeAI } from "@google/generative-ai";
 dotenv.config();
 const app = express();
 app.use(cors());
