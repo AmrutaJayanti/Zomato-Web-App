@@ -7,7 +7,7 @@ const RestaurantDetail = () => {
     const [restaurant, setRestaurant] = useState(null);
 
     useEffect(() => {
-        fetch(`https://zomato-web-ap.onrender.com/restaurant/${id}`, {
+        fetch(`http://localhost:5000/restaurant/${id}`, {
             method: "GET", 
             headers: {
                 "Content-Type": "application/json"
