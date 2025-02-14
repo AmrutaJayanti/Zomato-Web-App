@@ -6,10 +6,10 @@ const RestaurantList = () => {
     const [restaurants, setRestaurants] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
-    const itemsPerPage = 10; 
+    const itemsPerPage = 10; // Adjust according to your backend pagination limit
 
     useEffect(() => {
-        fetch(`https://zomato-web-ap.onrender.com/restaurants?page=${currentPage}&limit=${itemsPerPage}`, {
+        fetch(`http://localhost:5000/restaurants?page=${currentPage}&limit=${itemsPerPage}`, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json; charset=utf-8",

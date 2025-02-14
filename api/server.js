@@ -14,7 +14,6 @@ app.use("/restaurants", router);
 const upload = multer({ storage: multer.memoryStorage() });
 app.use(express.json({ charset: 'utf-8' }));
 
-
 function paginate(data, page, limit) {
     const start = (page - 1) * limit;
     const end = start + limit;
@@ -62,7 +61,6 @@ app.get("/restaurants/nearby", async (req, res) => {
     const { data: restaurants, error } = await supabase.from("restaurants").select("*");
     if (error) return res.status(500).json({ error: error.message });
 
-    // Haversine formula
     const R = 6371;
     const toRadians = (deg) => deg * (Math.PI / 180);
     const userLat = toRadians(lat);
@@ -91,39 +89,93 @@ app.get("/restaurants/nearby", async (req, res) => {
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 
-
 async function classifyCuisine(imageBuffer) {
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // Use updated model
+        console.log("Image buffer size:", imageBuffer.length);
+        
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        const prompt = "What type of cuisine is shown in this image? Please respond with just the cuisine name (e.g., 'Italian', 'Chinese', 'Indian', 'Mexican').";
 
         const result = await model.generateContent([
-            { inlineData: { mimeType: "image/png", data: imageBuffer.toString("base64") } },
-            "Analyze the image and classify the cuisine. Return only the cuisine name (e.g., 'Italian', 'Chinese', 'Indian', 'Mexican')."
+            {
+                inlineData: {
+                    data: imageBuffer.toString("base64"),
+                    mimeType: "image/jpeg"
+                }
+            },
+            prompt
         ]);
 
-        console.log("Gemini API Response:", JSON.stringify(result, null, 2)); // Debugging
-
-        const cuisine = result.response.candidates[0].content.parts[0].text.trim();
+        const response = await result.response;
+        const cuisine = response.text().trim();
         return cuisine;
     } catch (err) {
-        console.error("Error processing image:", err);
-        return null;
+        console.error("Cuisine classification error:", err);
+        throw new Error("Failed to classify cuisine: " + err.message);
     }
 }
 
-app.post("/restaurants/search/image", async (req, res) => {
+async function findRestaurantsByCuisine(cuisine, page = 1, limit = 10) {
+    try {
+        const { data: restaurants, error } = await supabase
+            .from("restaurants")
+            .select("*");
+        if (error) throw error;
+
+    
+        const matchingRestaurants = restaurants.filter(restaurant => 
+            restaurant.Cuisines && restaurant.Cuisines.toLowerCase().includes(cuisine.toLowerCase())
+        );
+        const paginatedResults = paginate(matchingRestaurants, page, limit);
+
+        return {
+            restaurants: paginatedResults.data,
+            totalPages: paginatedResults.totalPages,
+        };
+    } catch (error) {
+        console.error("Error finding restaurants:", error);
+        throw error;
+    }
+}
+
+router.post("/search/image", upload.single("image"), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: "No image uploaded" });
         }
 
-        const cuisine = await classifyCuisine(req.file.buffer);
-        res.json({ cuisine });
+        console.log("Received image:", req.file.originalname, "Size:", req.file.size);
+
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        let cuisine;
+        try {
+            cuisine = await classifyCuisine(req.file.buffer);
+        } catch (error) {
+            console.error("Classification error:", error);
+            return res.status(400).json({ error: "Could not classify cuisine: " + error.message });
+        }
+        try {
+            const results = await findRestaurantsByCuisine(cuisine, page, limit);
+            return res.json({
+                cuisine,
+                restaurants: results.restaurants,
+                totalPages: results.totalPages
+            });
+        } catch (error) {
+            console.error("Restaurant search error:", error);
+            return res.status(500).json({ error: "Error searching restaurants: " + error.message });
+        }
+
     } catch (error) {
-        console.error("Error processing image:", error);
-        res.status(500).json({ error: "Internal Server Error" });
+        console.error("Server error:", error);
+        res.status(500).json({ 
+            error: "Internal Server Error",
+            details: error.message 
+        });
     }
 });
 
-const PORT = process.env.PORT || 5003;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

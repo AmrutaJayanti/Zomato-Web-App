@@ -22,6 +22,7 @@
     "web-vitals": "^4.2.4"
   },
   "scripts": {
+    "start:backend": "node server.js",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",

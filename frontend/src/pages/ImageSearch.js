@@ -1,45 +1,58 @@
 import React, { useState } from "react";
 import "./../styles/ImageSearch.css";
+import { Link } from "react-router-dom";
 
 const ImageSearch = () => {
     const [file, setFile] = useState(null);
+    const [preview, setPreview] = useState(null);
     const [results, setResults] = useState([]);
     const [foodItem, setFoodItem] = useState("");
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(0);
+
+    const handleFileChange = (e) => {
+        const selectedFile = e.target.files[0];
+        if (selectedFile) {
+            setFile(selectedFile);
+            const reader = new FileReader();
+            reader.onloadend = () => setPreview(reader.result);
+            reader.readAsDataURL(selectedFile);
+        }
+    };
 
     const uploadImage = async () => {
-        if (!file) return alert("Please select an image.");
-        
-        setIsLoading(true);
-        setError(null);
-        
+        if (!file) {
+            setError("Please select an image.");
+            return;
+        }
+
+        setLoading(true);
+        setError("");
+
         const formData = new FormData();
         formData.append("image", file);
 
         try {
-            const response = await fetch("https://zomato-web-ap.onrender.com/restaurants/search/image", {
+            const response = await fetch(`http://localhost:5000/restaurants/search/image?page=${currentPage}`, {
                 method: "POST",
                 body: formData,
-                headers: {
-                    'Accept': 'application/json',
-                },
             });
 
             if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Server response:', response.status, errorText);
-                throw new Error(`Server error: ${response.status}`);
+                throw new Error("Failed to fetch data");
             }
 
             const data = await response.json();
-            setFoodItem(data.food);
+            setFoodItem(data.cuisine);
             setResults(data.restaurants);
+            setTotalPages(data.totalPages);
         } catch (err) {
-            console.error("Error details:", err);
-            setError(err.message || "Failed to upload image. Please try again.");
+            setError("Error searching restaurants. Please try again.");
+            console.error("Error searching:", err);
         } finally {
-            setIsLoading(false);
+            setLoading(false);
         }
     };
 
@@ -53,50 +66,73 @@ const ImageSearch = () => {
                         <input 
                             type="file" 
                             className="file-input"
-                            onChange={(e) => {
-                                const selectedFile = e.target.files[0];
-                                if (selectedFile && selectedFile.size > 5 * 1024 * 1024) {
-                                    alert("File size should be less than 5MB");
-                                    return;
-                                }
-                                setFile(selectedFile);
-                                setError(null);
-                            }}
+                            onChange={handleFileChange}
                             accept="image/*"
                         />
                         {file ? file.name : "Choose an image"}
                     </label>
+
+                    {preview && (
+                        <div className="image-preview">
+                            <img src={preview} alt="Preview" />
+                        </div>
+                    )}
                 </div>
+
                 <button 
                     className="search-button" 
                     onClick={uploadImage}
-                    disabled={!file || isLoading}
+                    disabled={!file || loading}
                 >
-                    {isLoading ? "Searching..." : "Search Restaurants"}
+                    {loading ? "Processing..." : "Search Restaurants"}
                 </button>
+
+                {error && (
+                    <div className="error-message">{error}</div>
+                )}
             </div>
 
-            {error && (
-                <div className="error-message" style={{ color: 'red', margin: '10px 0' }}>
-                    {error}
-                </div>
-            )}
-
             {foodItem && (
-                <h2 className="detected-food">Detected Food: {foodItem}</h2>
+                <h2 className="detected-food">Detected Cuisine: {foodItem}</h2>
             )}
 
             {results.length > 0 ? (
-                <ul className="results-list">
-                    {results.map(r => (
-                        <li key={r.Restaurant_ID} className="result-item">
-                            <h3 className="restaurant-name">{r.Restaurant_Name}</h3>
-                            <p className="restaurant-address">{r.Address}</p>
-                        </li>
-                    ))}
-                </ul>
+                <div className="results-container">
+                    <ul className="results-list">
+                        {results.map(r => (
+                            <Link key={r.Restaurant_ID}
+                            to={`/restaurant/${r.Restaurant_ID}`}>
+                            <li key={r.Restaurant_ID} className="result-item">
+                                <h3 className="restaurant-name">{r.Restaurant_Name}</h3>
+                                <p className="restaurant-address">{r.Address}</p>
+                                <p className="restaurant-cuisine">Cuisine: {r.cuisine}</p>
+                            </li>
+                            </Link>
+                        ))}
+                    </ul>
+                    
+                    <div className="pagination">
+                        <button 
+                            className="pagination-button"
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1 || loading}
+                        >
+                            Previous
+                        </button>
+                        <span className="page-info">
+                            Page {currentPage} of {totalPages}
+                        </span>
+                        <button 
+                            className="pagination-button"
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages || loading}
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
             ) : (
-                <p className="no-results">No restaurants found for this cuisine.</p>
+                foodItem && <p className="no-results">No restaurants found for this cuisine.</p>
             )}
         </div>
     );
